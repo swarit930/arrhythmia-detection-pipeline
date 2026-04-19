@@ -25,6 +25,7 @@ class MultiModalECGNet(nn.Module):
 
         self.gap = nn.AdaptiveAvgPool1d(1)
         self.cnn_dropout = nn.Dropout(dropout)
+        self.fusion_dropout = nn.Dropout(dropout)
 
         self.fusion_fc1 = nn.Linear(128 + 3, 96)
         self.fusion_fc2 = nn.Linear(96, 64)
@@ -42,6 +43,6 @@ class MultiModalECGNet(nn.Module):
         cnn_features = self.extract_cnn_features(signal)
         fused = torch.cat([cnn_features, rr_features], dim=1)
         fused = F.relu(self.fusion_fc1(fused))
-        fused = F.dropout(fused, p=0.3, training=self.training)
+        fused = self.fusion_dropout(fused)
         fused = F.relu(self.fusion_fc2(fused))
         return self.classifier(fused)

@@ -11,6 +11,8 @@ import config
 from src.data_loader import ECGDataLoader
 from src.preprocessor import ECGPreprocessor
 
+DEFAULT_RR_INTERVAL_SECONDS = 0.8
+
 
 class SignalAugment:
     """Beat-level ECG augmentation for robust minority-class generalization."""
@@ -76,7 +78,7 @@ def compute_rr_features(r_peaks: np.ndarray, fs: float, local_window: int = 10) 
 
     r_peaks = r_peaks.astype(np.float64)
     rr_intervals = np.diff(r_peaks) / float(fs)  # length n-1
-    global_rr = float(np.mean(rr_intervals)) if len(rr_intervals) > 0 else 0.8
+    global_rr = float(np.mean(rr_intervals)) if len(rr_intervals) > 0 else DEFAULT_RR_INTERVAL_SECONDS
 
     pre_rr = np.full(n, global_rr, dtype=np.float32)
     post_rr = np.full(n, global_rr, dtype=np.float32)
