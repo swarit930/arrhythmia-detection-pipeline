@@ -62,9 +62,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def verify_patient_wise_split(train_records, val_records, test_records) -> None:
-    train_ids = set([r[:3] for r in train_records])
-    val_ids = set([r[:3] for r in val_records])
-    test_ids = set([r[:3] for r in test_records])
+    train_ids = {r[:3] for r in train_records}
+    val_ids = {r[:3] for r in val_records}
+    test_ids = {r[:3] for r in test_records}
     assert train_ids.isdisjoint(val_ids), "Patient leakage detected between train and val sets."
     assert train_ids.isdisjoint(test_ids), "Patient leakage detected between train and test sets."
     assert val_ids.isdisjoint(test_ids), "Patient leakage detected between val and test sets."

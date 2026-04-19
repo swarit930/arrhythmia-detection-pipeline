@@ -6,6 +6,7 @@ from typing import List, Sequence, Tuple
 import numpy as np
 import torch
 from torch.utils.data import Dataset, WeightedRandomSampler
+import logging
 
 import config
 from src.data_loader import ECGDataLoader
@@ -14,6 +15,7 @@ from src.preprocessor import ECGPreprocessor
 # 0.8 s corresponds to ~75 BPM, a common resting HR used as a stable fallback.
 DEFAULT_RR_INTERVAL_SECONDS = 0.8
 MIN_STRETCHED_LENGTH = 2
+logger = logging.getLogger(__name__)
 
 
 class SignalAugment:
@@ -100,7 +102,10 @@ def compute_rr_features(r_peaks: np.ndarray, fs: float, local_window: int = 10) 
 
         start = max(1, i - local_window + 1)
         if i >= 1:
-            local_slice = (r_peaks[start : i + 1] - r_peaks[start - 1 : i]) / float(fs)
+            # Compute RR intervals inside the rolling window ending at beat i.
+            window_current = r_peaks[start : i + 1]
+            window_previous = r_peaks[start - 1 : i]
+            local_slice = (window_current - window_previous) / float(fs)
             local_rr_avg[i] = np.float32(np.mean(local_slice)) if len(local_slice) > 0 else np.float32(global_rr)
 
     return np.stack([pre_rr, post_rr, local_rr_avg], axis=1).astype(np.float32)
@@ -208,6 +213,9 @@ def build_weighted_sampler(labels: np.ndarray, num_classes: int = config.NUM_CLA
 def compute_inverse_frequency_class_weights(labels: np.ndarray, num_classes: int = config.NUM_CLASSES) -> np.ndarray:
     labels = labels.astype(np.int64)
     counts = np.bincount(labels, minlength=num_classes).astype(np.float64)
+    if np.any(counts == 0.0):
+        missing = np.where(counts == 0.0)[0].tolist()
+        logger.warning("Missing classes in labels for weighting: %s", missing)
     counts[counts == 0.0] = 1.0
     weights = 1.0 / counts
     weights = weights / weights.mean()
