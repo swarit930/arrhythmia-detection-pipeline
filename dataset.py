@@ -11,6 +11,7 @@ import config
 from src.data_loader import ECGDataLoader
 from src.preprocessor import ECGPreprocessor
 
+# 0.8 s corresponds to ~75 BPM, a common resting HR used as a stable fallback.
 DEFAULT_RR_INTERVAL_SECONDS = 0.8
 
 
@@ -70,7 +71,8 @@ def compute_rr_features(r_peaks: np.ndarray, fs: float, local_window: int = 10) 
     local_RR_avg:
         Mean RR interval over a rolling local window of recent beats.
     local_window:
-        Number of recent beats used to compute local_RR_avg.
+        Number of recent beats used to compute local_RR_avg (default 10 beats).
+        A 10-beat window smooths transient noise while retaining local rhythm shifts.
     """
     n = len(r_peaks)
     if n == 0:
@@ -191,9 +193,16 @@ class ArrhythmiaDataset(Dataset):
 def build_weighted_sampler(labels: np.ndarray, num_classes: int = config.NUM_CLASSES) -> WeightedRandomSampler:
     """Create inverse-frequency WeightedRandomSampler for class balancing."""
     labels = labels.astype(np.int64)
-    counts = np.bincount(labels, minlength=num_classes).astype(np.float64)
-    counts[counts == 0.0] = 1.0
-    class_weights = 1.0 / counts
+    class_weights = compute_inverse_frequency_class_weights(labels, num_classes=num_classes)
     sample_weights = class_weights[labels]
     sample_weights_t = torch.tensor(sample_weights, dtype=torch.double)
     return WeightedRandomSampler(weights=sample_weights_t, num_samples=len(sample_weights_t), replacement=True)
+
+
+def compute_inverse_frequency_class_weights(labels: np.ndarray, num_classes: int = config.NUM_CLASSES) -> np.ndarray:
+    labels = labels.astype(np.int64)
+    counts = np.bincount(labels, minlength=num_classes).astype(np.float64)
+    counts[counts == 0.0] = 1.0
+    weights = 1.0 / counts
+    weights = weights / weights.mean()
+    return weights

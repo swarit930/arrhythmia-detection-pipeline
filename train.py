@@ -13,7 +13,13 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 import config
-from dataset import ArrhythmiaDataset, SignalAugment, build_weighted_sampler, collect_beats_with_rr_features
+from dataset import (
+    ArrhythmiaDataset,
+    SignalAugment,
+    build_weighted_sampler,
+    collect_beats_with_rr_features,
+    compute_inverse_frequency_class_weights,
+)
 from model import MultiModalECGNet
 from src.evaluator import PatientSplitter
 from src.loss_functions import FocalLoss
@@ -61,14 +67,6 @@ def verify_patient_wise_split(train_records, val_records, test_records) -> None:
     assert train_ids.isdisjoint(val_ids), "Patient leakage detected between train and val sets."
     assert train_ids.isdisjoint(test_ids), "Patient leakage detected between train and test sets."
     assert val_ids.isdisjoint(test_ids), "Patient leakage detected between val and test sets."
-
-
-def compute_inverse_frequency_weights(labels: np.ndarray, num_classes: int = config.NUM_CLASSES) -> torch.Tensor:
-    counts = np.bincount(labels.astype(np.int64), minlength=num_classes).astype(np.float64)
-    counts[counts == 0.0] = 1.0
-    weights = 1.0 / counts
-    weights = weights / weights.mean()
-    return torch.tensor(weights, dtype=torch.float32)
 
 
 def run_epoch(
@@ -217,7 +215,11 @@ def main() -> None:
     )
 
     model = MultiModalECGNet(num_classes=config.NUM_CLASSES, dropout=config.DROPOUT_RATE).to(device)
-    class_weights = compute_inverse_frequency_weights(train_data.labels, num_classes=config.NUM_CLASSES).to(device)
+    class_weights = torch.tensor(
+        compute_inverse_frequency_class_weights(train_data.labels, num_classes=config.NUM_CLASSES),
+        dtype=torch.float32,
+        device=device,
+    )
     criterion = FocalLoss(alpha=class_weights, gamma=2.0)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=3)
