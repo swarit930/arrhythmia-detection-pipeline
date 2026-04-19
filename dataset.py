@@ -59,7 +59,17 @@ class SignalAugment:
 
 
 def compute_rr_features(r_peaks: np.ndarray, fs: float, local_window: int = 10) -> np.ndarray:
-    """Return [pre_RR, post_RR, local_RR_avg] for each beat."""
+    """Return beat timing context in seconds as [pre_RR, post_RR, local_RR_avg].
+
+    pre_RR:
+        Interval from previous beat to current beat.
+    post_RR:
+        Interval from current beat to next beat.
+    local_RR_avg:
+        Mean RR interval over a rolling local window of recent beats.
+    local_window:
+        Number of recent beats used to compute local_RR_avg.
+    """
     n = len(r_peaks)
     if n == 0:
         return np.empty((0, 3), dtype=np.float32)

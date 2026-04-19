@@ -40,8 +40,6 @@ class MultiModalECGNet(nn.Module):
 
     def forward(self, signal: torch.Tensor, rr_features: torch.Tensor) -> torch.Tensor:
         cnn_features = self.extract_cnn_features(signal)
-        if rr_features.dim() == 1:
-            rr_features = rr_features.unsqueeze(0)
         fused = torch.cat([cnn_features, rr_features], dim=1)
         fused = F.relu(self.fusion_fc1(fused))
         fused = F.dropout(fused, p=0.3, training=self.training)

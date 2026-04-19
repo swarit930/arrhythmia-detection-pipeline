@@ -4,7 +4,7 @@ import argparse
 import logging
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, TypedDict
 
 import numpy as np
 import torch
@@ -27,6 +27,13 @@ class EpochMetrics:
     loss: float
     acc: float
     macro_f1: float
+
+
+class TestMetrics(TypedDict):
+    macro_f1: float
+    weighted_f1: float
+    classification_report: Dict[str, object]
+    confusion_matrix: list[list[int]]
 
 
 def parse_args() -> argparse.Namespace:
@@ -112,7 +119,7 @@ def run_epoch(
     )
 
 
-def evaluate_test_set(model: MultiModalECGNet, loader: DataLoader, device: torch.device) -> Dict[str, object]:
+def evaluate_test_set(model: MultiModalECGNet, loader: DataLoader, device: torch.device) -> TestMetrics:
     model.eval()
     y_true = []
     y_pred = []
