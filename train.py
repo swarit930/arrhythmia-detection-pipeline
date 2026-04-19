@@ -52,6 +52,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=config.LEARNING_RATE)
     parser.add_argument("--weight-decay", type=float, default=config.WEIGHT_DECAY)
     parser.add_argument("--patience", type=int, default=8, help="Early stopping patience on val macro-F1.")
+    parser.add_argument("--scheduler-patience", type=int, default=3, help="ReduceLROnPlateau patience on val macro-F1.")
     parser.add_argument("--seed", type=int, default=config.RANDOM_SEED)
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--records", nargs="+", default=None)
@@ -109,7 +110,7 @@ def run_epoch(
 
     y_true = np.concatenate(all_true) if all_true else np.array([], dtype=np.int64)
     y_pred = np.concatenate(all_pred) if all_pred else np.array([], dtype=np.int64)
-    macro_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0) if len(y_true) else 0.0
+    macro_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
     return EpochMetrics(
         loss=total_loss / max(total, 1),
         acc=correct / max(total, 1),
@@ -222,7 +223,7 @@ def main() -> None:
     )
     criterion = FocalLoss(alpha=class_weights, gamma=2.0)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=3)
+    scheduler = ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=args.scheduler_patience)
 
     best_val_macro_f1 = -1.0
     best_epoch = 0

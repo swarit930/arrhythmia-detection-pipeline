@@ -13,6 +13,7 @@ from src.preprocessor import ECGPreprocessor
 
 # 0.8 s corresponds to ~75 BPM, a common resting HR used as a stable fallback.
 DEFAULT_RR_INTERVAL_SECONDS = 0.8
+MIN_STRETCHED_LENGTH = 2
 
 
 class SignalAugment:
@@ -53,7 +54,7 @@ class SignalAugment:
     def _time_stretch(self, signal: np.ndarray) -> np.ndarray:
         n = signal.shape[0]
         stretch = np.random.uniform(self.stretch_range[0], self.stretch_range[1])
-        stretched_n = max(2, int(round(n * stretch)))
+        stretched_n = max(MIN_STRETCHED_LENGTH, int(round(n * stretch)))
         src_idx = np.arange(n, dtype=np.float32)
         stretched_idx = np.linspace(0, n - 1, stretched_n, dtype=np.float32)
         stretched = np.interp(stretched_idx, src_idx, signal).astype(np.float32)
@@ -64,22 +65,27 @@ class SignalAugment:
 def compute_rr_features(r_peaks: np.ndarray, fs: float, local_window: int = 10) -> np.ndarray:
     """Return beat timing context in seconds as [pre_RR, post_RR, local_RR_avg].
 
-    pre_RR:
-        Interval from previous beat to current beat.
-    post_RR:
-        Interval from current beat to next beat.
-    local_RR_avg:
-        Mean RR interval over a rolling local window of recent beats.
+    Parameters
+    ----------
+    r_peaks:
+        1-D array of beat positions in sample indices.
+    fs:
+        Sampling frequency in Hz.
     local_window:
         Number of recent beats used to compute local_RR_avg (default 10 beats).
         A 10-beat window smooths transient noise while retaining local rhythm shifts.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (n_beats, 3) with columns [pre_RR, post_RR, local_RR_avg].
     """
     n = len(r_peaks)
     if n == 0:
         return np.empty((0, 3), dtype=np.float32)
 
     r_peaks = r_peaks.astype(np.float64)
-    rr_intervals = np.diff(r_peaks) / float(fs)  # length n-1
+    rr_intervals = np.diff(r_peaks) / float(fs)
     global_rr = float(np.mean(rr_intervals)) if len(rr_intervals) > 0 else DEFAULT_RR_INTERVAL_SECONDS
 
     pre_rr = np.full(n, global_rr, dtype=np.float32)
