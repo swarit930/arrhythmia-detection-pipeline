@@ -168,7 +168,7 @@ class GradientExplainer:
         # Attribution as bar chart coloured by sign
         colours = np.where(attributions >= 0, "crimson", "royalblue")
         ax2.bar(t, attributions, color=colours, width=1.0)
-        ax2.axhline(0, colour="black", linewidth=0.5)
+        ax2.axhline(0, color="black", linewidth=0.5)
         ax2.set_ylabel("Attribution")
         ax2.set_xlabel("Sample index")
 
