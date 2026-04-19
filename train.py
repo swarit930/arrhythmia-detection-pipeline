@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 from dataclasses import dataclass
 from typing import Dict, TypedDict
 
-import numpy as np
 import torch
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -290,7 +290,8 @@ def main() -> None:
     test_metrics = evaluate_test_set(model, test_loader, device)
     logger.info("Test macro_f1=%.4f | weighted_f1=%.4f", test_metrics["macro_f1"], test_metrics["weighted_f1"])
 
-    np.save(os.path.join(args.results_dir, "multimodal_history.npy"), np.array(history, dtype=object), allow_pickle=True)
+    with open(os.path.join(args.results_dir, "multimodal_history.json"), "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2)
     with open(os.path.join(args.results_dir, "multimodal_test_report.txt"), "w", encoding="utf-8") as f:
         f.write(f"Best epoch: {best_epoch}\n")
         f.write(f"Best val macro F1: {best_val_macro_f1:.6f}\n")

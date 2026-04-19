@@ -76,6 +76,7 @@ def compute_rr_features(r_peaks: np.ndarray, fs: float, local_window: int = 10) 
     local_window:
         Number of recent beats used to compute local_RR_avg (default 10 beats).
         A 10-beat window smooths transient noise while retaining local rhythm shifts.
+        If fewer than 10 prior beats are available, the window contracts automatically.
 
     Returns
     -------
